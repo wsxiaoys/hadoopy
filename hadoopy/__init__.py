@@ -24,6 +24,7 @@ from _job_cli import run
 from _reporter import status, counter
 from _test import Test
 from _hadoopy_typedbytes import TypedBytesFile
+from _hadoopy_typedbytes import RawBytesFile
 import _hadoopy_typedbytes as _typedbytes
 import _hadoopy_main as _main
 from _hadoopy_main import GroupedValues

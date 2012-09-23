@@ -164,6 +164,7 @@ cdef class HadoopyTask(object):
     cdef int write_fd
     cdef void* read_fp
     cdef object tb
+    cdef object rb
 
     def __init__(self, mapper, reducer, combiner, task_type, read_fd=None, write_fd=None):
         self.mapper = mapper
