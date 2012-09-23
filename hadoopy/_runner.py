@@ -121,7 +121,7 @@ def _check_script(script_path, files, python_cmd):
 def launch(in_name, out_name, script_path, partitioner=False, files=(), jobconfs=(),
            cmdenvs=(), input_format=None, output_format=None, copy_script=True,
            wait=True, hstreaming=None, name=None,
-           use_typedbytes=True, use_seqoutput=True, use_autoinput=True,
+           io="typedbytes", use_seqoutput=True, use_autoinput=True,
            remove_output=False, add_python=True, config=None, pipe=True,
            python_cmd="python", num_mappers=None, num_reducers=None,
            script_dir='', remove_ext=False, check_script=True, make_executable=True,
@@ -141,7 +141,7 @@ def launch(in_name, out_name, script_path, partitioner=False, files=(), jobconfs
     :param wait: If True, wait till the process is completed (default True) this is useful if you want to run multiple jobs concurrently by using the 'process' entry in the output.
     :param hstreaming: The full hadoop streaming path to call.
     :param name: Set the job name to this (default None, job name is the script name)
-    :param use_typedbytes: If True (default), use typedbytes IO.
+    :param io: Streaming protocol. If 'typedbytes' (default), use typedbytes IO.
     :param use_seqoutput: True (default), output sequence file. If False, output is text.  If output_format is set, this is not used.
     :param use_autoinput: If True (default), sets the input format to auto.  If input_format is set, this is not used.
     :param remove_output: If True, output directory is removed if it exists. (defaults to False)
@@ -267,8 +267,8 @@ def launch(in_name, out_name, script_path, partitioner=False, files=(), jobconfs
     for x in cmdenvs.items():
         cmd += ['-cmdenv', '"%s=%s"' % x]
     # Add IO
-    if use_typedbytes:
-        cmd += ['-io', 'typedbytes']
+    if io != None:
+        cmd += ['-io', io]
     # Add Outputformat
     if output_format is not None:
         cmd += ['-outputformat', output_format]
@@ -353,7 +353,7 @@ def launch_frozen(in_name, out_name, script_path, frozen_tar_path=None,
     :param cmdenvs: Extra cmdenv parameters (iterator)
     :param hstreaming: The full hadoop streaming path to call.
     :param name: Set the job name to this (default None, job name is the script name)
-    :param use_typedbytes: If True (default), use typedbytes IO.
+    :param io: Streaming protocol. If 'typedbytes' (default), use typedbytes IO.
     :param use_seqoutput: True (default), output sequence file. If False, output is text.
     :param use_autoinput: If True (default), sets the input format to auto.
     :param config: If a string, set the hadoop config path

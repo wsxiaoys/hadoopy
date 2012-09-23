@@ -180,7 +180,9 @@ cdef class HadoopyTask(object):
         else:
             self.write_fd = int(write_fd)
         self.read_fp = fdopen(self.read_fd, 'r')
+
         self.tb = hadoopy.TypedBytesFile(read_fd=self.read_fd, write_fd=self.write_fd, flush_writes=self.flush_tb_writes())
+        self.rb = hadoopy.RawBytesFile(read_fd=self.read_fd, write_fd=self.write_fd, flush_writes=self.flush_tb_writes())
 
     # Core methods
     def run(self):
@@ -228,13 +230,21 @@ cdef class HadoopyTask(object):
     def print_out_tb(self, iter):
         self.tb.writes(iter)
 
+    def print_out_rb(self, iter):
+        self.rb.writes(iter)
+
     def print_out(self, iter):
         """Given an iterator, output the paired values
 
         Args:
             iter: Iterator of (key, value)
         """
-        self.print_out_tb(iter) if self.is_io_typedbytes() else self.print_out_text(iter)
+        if self.is_io_type('typedbytes'):
+            self.print_out_tb(iter)
+        if self.is_io_type('rawbytes'):
+            self.print_out_rb(iter)
+        else:
+            self.print_out_text(iter)
 
     # Input methods
     cpdef read_key_value_text(self):
@@ -277,8 +287,10 @@ cdef class HadoopyTask(object):
         Returns:
             Iterator that can be called to get KeyValue pairs.
         """
-        if self.is_io_typedbytes():
+        if self.is_io_type('typedbytes'):
             return KeyValueStream(self.tb.__next__)
+        if self.is_io_type('rawbytes'):
+            return KeyValueStream(self.rb.__next__)
         if self.is_on_hadoop():
             return KeyValueStream(self.read_key_value_text)
         return KeyValueStream(self.read_offset_value_text)
@@ -288,15 +300,15 @@ cdef class HadoopyTask(object):
         Returns:
             Iterator that can be called to get grouped KeyValues.
         """
-        if self.is_io_typedbytes():
+        if self.is_io_type('typedbytes'):
             return GroupedKeyValues(KeyValueStream(self.tb.__next__))
+        if self.is_io_type('rawbytes'):
+            return GroupedKeyValues(KeyValueStream(self.rb.__next__))
         return GroupedKeyValues(KeyValueStream(self.read_key_value_text))
 
-    # Environment info methods
-    def is_io_typedbytes(self):
-        # Only all or nothing typedbytes is supported, just check stream_map_input
+    def is_io_type(self, name):
         try:
-            return os.environ['stream_map_input'] == 'typedbytes'
+            return os.environ['stream_map_input'] == name
         except KeyError:
             return False
 
