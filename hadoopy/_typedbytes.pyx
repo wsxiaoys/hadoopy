@@ -631,8 +631,8 @@ cdef __read_key_value_rb(void *fp):
 
 cdef __write_key_value_rb(void *fp, kv):
     k, v = kv
-    _write_bytes(fp, k)
-    _write_bytes(fp, v)
+    _write_bytes(fp, str(k))
+    _write_bytes(fp, str(v))
 
 cdef class RawBytesFile(object):
     """RawBytesFile interface
