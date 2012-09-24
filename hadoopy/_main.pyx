@@ -187,12 +187,18 @@ cdef class HadoopyTask(object):
 
     # Core methods
     def run(self):
+        env = os.environ
+        minput = env.get('stream_map_input', 'text')
+        moutput = env.get('stream_map_output', minput)
+        rinput = env.get('stream_reduce_input', minput)
+        routput = env.get('stream_reduce_output', minput)
+
         if self.task_type == 'map':
-            return self.process_inout(self.mapper, self.read_in_map(), self.print_out, 'map')
+            return self.process_inout(self.mapper, self.read_in_map(minput), self.print_out(moutput), 'map')
         elif self.task_type == 'reduce':
-            return self.process_inout(self.reducer, self.read_in_reduce(), self.print_out, 'reduce')
+            return self.process_inout(self.reducer, self.read_in_reduce(rinput), self.print_out(routput), 'reduce')
         elif self.task_type == 'combine':
-            return self.process_inout(self.combiner, self.read_in_reduce(), self.print_out, 'reduce')
+            return self.process_inout(self.combiner, self.read_in_reduce(rinput), self.print_out(routput), 'reduce')
         else:
             return 1
 
@@ -234,18 +240,19 @@ cdef class HadoopyTask(object):
     def print_out_rb(self, iter):
         self.rb.writes(iter)
 
-    def print_out(self, iter):
+    def print_out(self, type):
         """Given an iterator, output the paired values
 
         Args:
             iter: Iterator of (key, value)
         """
-        if self.is_io_type('typedbytes'):
-            self.print_out_tb(iter)
-        if self.is_io_type('rawbytes'):
-            self.print_out_rb(iter)
-        else:
-            self.print_out_text(iter)
+        if type == 'typedbytes':
+            return self.print_out_tb
+
+        if type == 'rawbytes':
+            return self.print_out_rb
+
+        return self.print_out_text
 
     # Input methods
     cpdef read_key_value_text(self):
@@ -278,7 +285,7 @@ cdef class HadoopyTask(object):
         self.line_count += sz
         return out_count, line
 
-    def read_in_map(self):
+    def read_in_map(self, type):
         """Provides the input iterator to use
 
         If is_io_typedbytes() is true, then use TypedBytes.
@@ -288,30 +295,29 @@ cdef class HadoopyTask(object):
         Returns:
             Iterator that can be called to get KeyValue pairs.
         """
-        if self.is_io_type('typedbytes'):
+        if type == 'typedbytes':
             return KeyValueStream(self.tb.__next__)
-        if self.is_io_type('rawbytes'):
+
+        if type == 'rawbytes':
             return KeyValueStream(self.rb.__next__)
+
         if self.is_on_hadoop():
             return KeyValueStream(self.read_key_value_text)
+
         return KeyValueStream(self.read_offset_value_text)
 
-    def read_in_reduce(self):
+    def read_in_reduce(self, type):
         """
         Returns:
             Iterator that can be called to get grouped KeyValues.
         """
-        if self.is_io_type('typedbytes'):
+        if type == 'typedbytes':
             return GroupedKeyValues(KeyValueStream(self.tb.__next__))
-        if self.is_io_type('rawbytes'):
-            return GroupedKeyValues(KeyValueStream(self.rb.__next__))
-        return GroupedKeyValues(KeyValueStream(self.read_key_value_text))
 
-    def is_io_type(self, name):
-        try:
-            return os.environ['stream_map_input'] == name
-        except KeyError:
-            return False
+        if type == 'rawbytes':
+            return GroupedKeyValues(KeyValueStream(self.rb.__next__))
+
+        return GroupedKeyValues(KeyValueStream(self.read_key_value_text))
 
     def is_on_hadoop(self):
         return 'mapred_input_format_class' in os.environ
